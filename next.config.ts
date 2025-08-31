@@ -2,14 +2,15 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  // ✅ Disable ESLint during build
   eslint: {
-    // ✅ Ignore ESLint during production builds
     ignoreDuringBuilds: true,
   },
+  // ✅ Disable TypeScript errors during build
   typescript: {
-    // ✅ Ignore TypeScript errors during build
     ignoreBuildErrors: true,
   },
+  // ✅ i18n config (optional, can be removed if not using)
   i18n: {
     locales: ['en', 'fr', 'es', 'de', 'ar'],
     defaultLocale: 'en',

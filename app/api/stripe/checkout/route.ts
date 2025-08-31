@@ -1,55 +1,71 @@
-import { buffer } from 'node:stream/consumers';
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { supabase } from '@/lib/supabase';
 
-export async function POST(req: NextRequest) {
-  if (!req.body) {
-    return new Response('Request body is missing', { status: 400 });
-  }
-  // Convert the web ReadableStream to a Buffer
-    const arrayBuffer = await req.body?.getReader().read().then(({ value }) => value);
-    const buf = Buffer.from(arrayBuffer ?? []);
-  const sig = req.headers.get('stripe-signature');
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-  if (!sig || !webhookSecret) {
-    return new Response('Missing stripe signature or webhook secret', { status: 400 });
-  }
-
-  let event;
-
-  try {
-    event = stripe.webhooks.constructEvent(buf, sig, webhookSecret);
-  } catch (err: any) {
-    return new Response(`Webhook Error: ${err.message}`, { status: 400 });
-  }
-
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as any;
-
-    // Update booking to approved
-    const { error } = await supabase
-      .from('bookings')
-      .update({
-        payment_status: 'approved',
-        transaction_id: session.payment_intent,
-        updated_at: new Date().toISOString()
-      })
-      .match({
-        user_email: session.metadata?.user_email,
-        package_id: session.metadata?.packageId,
-        payment_status: 'pending'
-      });
-
-    if (error) {
-      console.error('Supabase update error:', error);
-      return new Response('Error updating booking', { status: 500 });
-    }
-  }
-
-  return new Response(JSON.stringify({ received: true }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' }
-  });
+interface CheckoutBody {
+  price: number;
+  package: string;
+  packageId: string;
+  user: {
+    name: string;
+    email: string;
+  };
 }
+
+export async function POST(req: NextRequest) {
+  try {
+    const body: CheckoutBody = await req.json();
+    const { price, package: packageName, packageId, user } = body;
+    const amountInCents = Math.round(price * 100);
+
+    // Create a pending booking in Supabase first
+    const { error: bookingError } = await supabase.from('bookings').insert({
+      package_id: packageId,
+      package_name: packageName,
+      amount: price,
+      currency: 'usd',
+      payment_status: 'pending',
+      payment_method: 'stripe',
+      user_name: user.name,
+      user_email: user.email,
+      created_at: new Date().toISOString(),
+    });
+
+    if (bookingError) {
+      console.error('Supabase insert error:', bookingError);
+      return Response.json({ error: 'Failed to create booking' }, { status: 500 });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: { 
+              name: packageName 
+            },
+            unit_amount: amountInCents,
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        packageId,
+        user_email: user.email
+      },
+      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/bookings/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/packages`,
+    });
+
+    if (!session.url) {
+      return Response.json({ error: 'Failed to create checkout session' }, { status: 500 });
+    }
+
+    return Response.json({ url: session.url });
+  } catch (err) {
+    console.error('Checkout error:', err);
+        return Response.json({ error: (err as Error).message }, { status: 500 });
+      }
+    }

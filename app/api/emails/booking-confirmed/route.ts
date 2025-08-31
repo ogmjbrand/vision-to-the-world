@@ -1,28 +1,39 @@
-import { NextResponse } from "next/server";
-import { Resend } from "resend"; // or resend provider 
-// Initialize email provider
-const resend = new Resend(process.env.RESEND_API_KEY); // example with Resend
+// app/api/emails/booking-confirmed/route.ts
+import { NextResponse } from 'next/server';
+import { Resend } from 'resend';
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
-    const body = await req.json(); 
+    // Check if API key exists
+    if (!process.env.RESEND_API_KEY) {
+      console.error('re_PPeAa9z8_4Eb3ZCNTpWZu1pbhuqAqMih7');
+      return NextResponse.json(
+        { error: 'Email service not configured' },
+        { status: 500 }
+      );
+    }
 
-    const { user_email, packageId } = body; // 👈 values you send from frontend
+    const resend = new Resend(process.env.RESEND_API_KEY);
     
-    // Send email
-    const data = await resend.emails.send({
-      from: "Vision to the world <no-reply@visiontotheworld.com>", 
-      to: user_email,
-      subject: "Booking Confirmed ✅",
-      html: `
-        <h1>Thank you for your booking!</h1>
-        <p>Your package ID: <b>${packageId}</b></p>
-      `,
+    // Your email sending code here...
+    const { data, error } = await resend.emails.send({
+      from: 'onboarding@resend.dev',
+      to: 'kharmony987@gmail.com',
+      subject: 'Booking Confirmed',
+      html: '<p>Your booking has been confirmed!</p>'
     });
 
-    return NextResponse.json({ success: true, data });
+    if (error) {
+      return NextResponse.json({ error }, { status: 400 });
+    }
+
+    return NextResponse.json(data);
+    
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ success: false, error });
+    console.error('Email sending error:', error);
+    return NextResponse.json(
+      { error: 'Failed to send email' },
+      { status: 500 }
+    );
   }
 }

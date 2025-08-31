@@ -1,11 +1,9 @@
 // app/bookings/success/page.tsx
+'use client';  // ← MUST be first line!
+
 import { Suspense } from 'react';
 
-// Add this line to make it a client component
-'use client';
-
 function SuccessContent() {
-  // Use import instead of require for better compatibility
   const { useSearchParams } = require('next/navigation');
   const searchParams = useSearchParams();
   const bookingId = searchParams.get('bookingId');

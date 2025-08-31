@@ -1,82 +1,59 @@
 // app/bookings/success/page.tsx
+import { Suspense } from 'react';
+
+// Add this line to make it a client component
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-
-export default function SuccessPage() {
-  const router = useRouter();
+function SuccessContent() {
+  // Use import instead of require for better compatibility
+  const { useSearchParams } = require('next/navigation');
   const searchParams = useSearchParams();
-  const sessionId = searchParams.get('session_id');
-  const email = searchParams.get('email'); // Get email from URL
-  const [booking, setBooking] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!sessionId || !email) {
-      setTimeout(() => router.push('/packages'), 3000);
-      return;
-    }
-
-    // Optionally fetch booking details from your database
-    // const fetchBooking = async () => {
-    //   const res = await fetch(`/api/bookings?email=${email}&session_id=${sessionId}`);
-    //   const data = await res.json();
-    //   setBooking(data);
-    //   setLoading(false);
-    // };
-    // fetchBooking();
-
-    setLoading(false);
-  }, [sessionId, email, router]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-green-50">
-        <div className="text-center p-8">
-          <div className="animate-spin text-4xl mb-4">⌛</div>
-          <p>Verifying your booking...</p>
-        </div>
-      </div>
-    );
-  }
-
+  const bookingId = searchParams.get('bookingId');
+  const status = searchParams.get('status');
+  
   return (
-    <div className="min-h-screen flex items-center justify-center bg-green-50">
-      <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
-        <div className="text-6xl mb-4 animate-bounce">✅</div>
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">Booking Confirmed!</h1>
-        <p className="text-gray-600 mb-4">Thank you for booking with Vision To The World!</p>
-        <p className="text-sm text-gray-500 font-mono bg-gray-50 p-2 rounded">
-          Transaction ID: {sessionId}
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="bg-white rounded-lg shadow-md p-8 max-w-md w-full text-center">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          Booking Successful!
+        </h1>
+        
+        <p className="text-gray-600 mb-6">
+          Thank you for your booking. Your reservation has been confirmed.
         </p>
 
-        <div className="mt-8 space-y-6">
-          <div className="text-gray-700">
-            <strong className="block mb-2">Next Steps:</strong>
-            <p>Check your email ({email}) for confirmation details.</p>
+        {bookingId && (
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <p className="text-sm font-medium text-gray-700">Booking Reference</p>
+            <p className="text-lg font-bold text-gray-900">{bookingId}</p>
           </div>
+        )}
 
-          <a
-            href="https://wa.me/17164305246"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <span className="mr-2">💬</span>
-            Need help? Chat with us
-          </a>
-
-          <div className="pt-4 border-t">
-            <button
-              onClick={() => router.push('/')}
-              className="text-blue-600 hover:text-blue-800 transition-colors"
-            >
-              ← Back to Home
-            </button>
-          </div>
-        </div>
+        <button
+          onClick={() => window.location.href = '/'}
+          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+        >
+          Return to Home
+        </button>
       </div>
     </div>
+  );
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    }>
+      <SuccessContent />
+    </Suspense>
   );
 }

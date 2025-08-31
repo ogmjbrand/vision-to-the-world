@@ -1,5 +1,4 @@
-// app/bookings/success/page.tsx
-'use client';  // ← MUST be first line!
+'use client';
 
 import { Suspense } from 'react';
 
